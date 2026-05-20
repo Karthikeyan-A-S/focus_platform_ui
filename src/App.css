@@ -182,6 +182,26 @@
     border-right-color: var(--border);
   }
 }
+/* ── Button hover visibility fix (light mode) ───────────────────────────
+   Without this, some .btn variants blend into the white page background
+   on hover because the inherited or default rule removes contrast.
+   filter:brightness darkens any background colour — works in both themes.
+──────────────────────────────────────────────────────────────────────── */
+.btn {
+    transition: filter 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+    filter: brightness(0.88);
+    opacity: 1; /* cancel any opacity-based fade that might whiteout the btn */
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: none;
+}
+
 .modal-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
+import { studentApi } from '../../api/studentApi';
 import { getApiErrorMessage } from '../../utils/apiError';
 import {
     parseQuestionOptions,
     letterForOptionIndex,
-    buildSubmitAnswersPayload,
+    getQuestionId
 } from '../../utils/quizOptions';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
@@ -50,30 +51,25 @@ export default function CoursePlayer() {
     const handleOptionSelect = (questionId, letter) => {
         setAnswers((prev) => ({
             ...prev,
-            [questionId]: letter,
+            [questionId]: letter.toUpperCase(),
         }));
     };
 
     const handleSubmitQuiz = async () => {
-        const unanswered = questions.filter((q) => !answers[q.id]);
+        const unanswered = questions.filter((q) => !answers[getQuestionId(q)]);
         if (unanswered.length > 0) {
             alert(`Please answer all ${questions.length} questions before submitting.`);
             return;
         }
 
-        const payload = buildSubmitAnswersPayload(questions, answers);
-
         try {
             setSubmitting(true);
-            const response = await api.post('/student/submit', {
-                courseId: parseInt(courseId, 10),
-                answers: payload,
-            });
-
+            // Send the raw dictionary of answers directly to the API
+            const result = await studentApi.submitQuiz(courseId, answers);
             const msg =
-                typeof response.data === 'string'
-                    ? response.data
-                    : response.data?.message || 'Quiz submitted successfully!';
+                typeof result === 'string'
+                    ? result
+                    : result?.message || 'Quiz submitted successfully!';
             alert(msg);
             navigate('/student/dashboard');
         } catch (error) {
@@ -91,7 +87,7 @@ export default function CoursePlayer() {
             <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <button
                     type="button"
-                    className="text-sm font-medium text-[var(--primary)] hover:underline"
+                    className="btn-ghost text-sm font-medium"
                     onClick={() => navigate('/student/dashboard')}
                 >
                     ← Dashboard
@@ -115,7 +111,7 @@ export default function CoursePlayer() {
                         </p>
                     ) : (
                         contents.map((content) => (
-                            <div key={content.id} className="card mb-6 text-lg leading-relaxed">
+                            <div key={content.id} className="card card-static mb-6 text-lg leading-relaxed">
                                 {content.bodyText}
                             </div>
                         ))
@@ -124,8 +120,7 @@ export default function CoursePlayer() {
                     <div className="mt-12 flex justify-center border-t border-[var(--border)] pt-8">
                         <button
                             type="button"
-                            className="btn px-8 py-3 text-lg"
-                            style={{ background: 'var(--success)' }}
+                            className="btn btn-success px-8 py-3 text-lg"
                             onClick={() => setView('quiz')}
                         >
                             Proceed to Quiz →
@@ -138,7 +133,7 @@ export default function CoursePlayer() {
                 <div>
                     <div className="mb-6 flex items-center justify-between border-b border-[var(--border)] pb-4">
                         <h1 className="page-title">Knowledge Check</h1>
-                        <span className="rounded-full bg-[var(--primary-muted)] px-3 py-1 text-sm font-bold text-[var(--primary)]">
+                        <span className="badge">
                             {questions.length} Questions
                         </span>
                     </div>
@@ -149,39 +144,34 @@ export default function CoursePlayer() {
                         </p>
                     ) : (
                         questions.map((q, index) => {
+                            const qid = getQuestionId(q);
                             const optionsArray = parseQuestionOptions(q.options);
                             return (
                                 <div
-                                    key={q.id}
-                                    className="card mb-6 border-l-4 border-[var(--primary)]"
+                                    key={qid}
+                                    className="card card-static mb-6 border-l-4 border-[var(--primary)]"
                                 >
-                                    <h3 className="mb-4 text-xl font-bold">
+                                    <h3 className="mb-4 text-xl font-bold text-[var(--text)]">
                                         {index + 1}. {q.questionText}
                                     </h3>
                                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                         {optionsArray.map((opt, i) => {
                                             const letter = letterForOptionIndex(i);
-                                            const selected = answers[q.id] === letter;
+                                            const selected = answers[qid] === letter;
                                             return (
                                                 <label
-                                                    key={letter}
-                                                    className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
-                                                        selected
-                                                            ? 'border-[var(--primary)] bg-[var(--primary-muted)] ring-1 ring-[var(--primary)]'
-                                                            : 'border-[var(--border)] hover:bg-[var(--surface)]'
-                                                    }`}
+                                                    key={`${qid}-${letter}`}
+                                                    className={`quiz-option ${selected ? 'quiz-option-selected' : ''}`}
                                                 >
                                                     <input
                                                         type="radio"
-                                                        name={`question-${q.id}`}
+                                                        name={`question-${qid}`}
                                                         value={letter}
                                                         checked={selected}
-                                                        onChange={() =>
-                                                            handleOptionSelect(q.id, letter)
-                                                        }
+                                                        onChange={() => handleOptionSelect(qid, letter)}
                                                     />
-                                                    <span>
-                                                        <strong className="text-[var(--primary)]">
+                                                    <span className="quiz-option-text">
+                                                        <strong className="quiz-option-letter">
                                                             {letter}.
                                                         </strong>{' '}
                                                         {opt}
@@ -198,14 +188,14 @@ export default function CoursePlayer() {
                     <div className="mt-8 flex items-center justify-between">
                         <button
                             type="button"
-                            className="font-bold text-[var(--text-muted)] hover:text-[var(--text)]"
+                            className="btn-ghost font-bold"
                             onClick={() => setView('content')}
                         >
                             ← Back to Reading
                         </button>
                         <button
                             type="button"
-                            className="btn px-8 text-lg"
+                            className="btn btn-primary px-8 text-lg"
                             onClick={handleSubmitQuiz}
                             disabled={submitting || questions.length === 0}
                         >
