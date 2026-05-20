@@ -64,6 +64,7 @@ export default function CoursePlayer() {
 
         try {
             setSubmitting(true);
+            console.log("SENDING ANSWERS TO API:", answers);
             // Send the raw dictionary of answers directly to the API
             const result = await studentApi.submitQuiz(courseId, answers);
             const msg =
