@@ -11,11 +11,12 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         const role = localStorage.getItem('user_role');
         const name = localStorage.getItem('user_name');
+        const id = localStorage.getItem('user_id');
 
         if (role && name) {
-            setUser({ role, name });
+            setUser({ role, name, id: id ? Number(id) : undefined });
         }
-        setLoading(false); // Tell App.jsx we are done checking
+        setLoading(false);
     }, []);
 
     // 2. ON LOGIN: Save to memory so it survives a refresh
@@ -27,8 +28,15 @@ export const AuthProvider = ({ children }) => {
             // Save the user details (but NOT the token, that is safely in the HttpOnly cookie!)
             localStorage.setItem('user_role', data.role);
             localStorage.setItem('user_name', data.name);
-            
-            setUser({ role: data.role, name: data.name });
+            if (data.id != null) {
+                localStorage.setItem('user_id', String(data.id));
+            }
+
+            setUser({
+                role: data.role,
+                name: data.name,
+                id: data.id != null ? Number(data.id) : undefined,
+            });
             return data.role;
         } catch (error) {
             console.error("Login failed", error);
@@ -45,6 +53,7 @@ export const AuthProvider = ({ children }) => {
         } finally {
             localStorage.removeItem('user_role');
             localStorage.removeItem('user_name');
+            localStorage.removeItem('user_id');
             setUser(null);
         }
     };

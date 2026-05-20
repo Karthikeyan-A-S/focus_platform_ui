@@ -1,16 +1,63 @@
-# React + Vite
+# Focus Platform UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for the Focus learning platform. Connects to the Spring Boot backend for classrooms, courses, quizzes, analytics, and leaderboards.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+npm install
+npm run dev
+```
 
-## React Compiler
+App runs at [http://localhost:5173](http://localhost:5173). The dev server proxies `/api` to `http://localhost:8080` unless you set `VITE_API_BASE_URL`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Environment variables
 
-## Expanding the ESLint configuration
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_BASE_URL` | *(empty — uses `/api` proxy)* | Backend origin, e.g. `http://localhost:8080`. Requests go to `{base}/api/...` with cookies (`withCredentials`). |
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Copy `.env.example` to `.env.local` to override.
+
+## Auth
+
+- HttpOnly `jwt` cookie after login (`credentials: include`)
+- Roles: `STUDENT`, `TEACHER`
+- User id stored when returned by login (for leaderboard “You” highlight)
+
+## Routes
+
+| Route | Role | API |
+|-------|------|-----|
+| `/login`, `/register` | Public | Auth |
+| `/teacher/dashboard` | Teacher | Classrooms |
+| `/teacher/classroom/:classroomId` | Teacher | Courses, content, questions, **student roster** |
+| `/teacher/courses/:courseId/analytics` | Teacher | `GET /api/analytics/teacher/courses/:courseId` |
+| `/teacher/courses/:courseId/leaderboard` | Teacher | `GET /api/analytics/leaderboard/courses/:courseId` |
+| `/student/dashboard` | Student | Enroll, classrooms |
+| `/student/analytics` | Student | `GET /api/analytics/student` |
+| `/student/course/:courseId` | Student | Course player / quiz |
+| `/student/course/:courseId/leaderboard` | Student | Leaderboard |
+
+## Analytics API module
+
+Typed helpers in `src/api/analyticsApi.js`:
+
+- `fetchStudentAnalytics()`
+- `fetchTeacherCourseStats(courseId)`
+- `fetchCourseLeaderboard(courseId)`
+
+Classroom students: `src/api/teacherStudentsApi.js`
+
+## Theme
+
+Use the moon/sun control in the navbar to switch light/dark mode. Preference is saved in `localStorage` (`focus_theme`).
+
+## Build
+
+```bash
+npm run build
+npm run preview
+```
+
+For production, serve the built app behind the same host as the API or set `VITE_API_BASE_URL` to your backend URL.

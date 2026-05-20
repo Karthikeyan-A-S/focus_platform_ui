@@ -2,13 +2,9 @@ import Navbar from './Navbar';
 
 export default function MainLayout({ children }) {
     return (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="flex min-h-screen flex-col bg-[var(--bg)]">
             <Navbar />
-            
-            {/* The active page content gets injected into this main tag */}
-            <main style={{ flex: 1, paddingBottom: '40px' }}>
-                {children}
-            </main>
+            <main className="flex-1 pb-10">{children}</main>
         </div>
     );
 }

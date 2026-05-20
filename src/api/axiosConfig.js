@@ -42,13 +42,17 @@
 
 import axios from 'axios';
 
+const envBase = import.meta.env.VITE_API_BASE_URL;
+const baseURL = envBase
+    ? `${envBase.replace(/\/$/, '')}/api`
+    : '/api';
+
 const api = axios.create({
-    // Changed this line! Now it just uses the relative path.
-    baseURL: '/api', 
+    baseURL,
     headers: {
         'Content-Type': 'application/json',
     },
-    withCredentials: true 
+    withCredentials: true,
 });
 
 api.interceptors.response.use(
@@ -58,6 +62,7 @@ api.interceptors.response.use(
             console.log(error)
             localStorage.removeItem('user_role');
             localStorage.removeItem('user_name');
+            localStorage.removeItem('user_id');
             // window.location.href = '/login'; 
         }
         return Promise.reject(error);

@@ -1,37 +1,77 @@
 import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useTheme } from '../../context/ThemeContext';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 
 export default function Navbar() {
     const { user, logout } = useContext(AuthContext);
+    const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
+    const location = useLocation();
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         navigate('/login');
     };
+
+    const homePath = user
+        ? user.role === 'TEACHER'
+            ? '/teacher/dashboard'
+            : '/student/dashboard'
+        : '/login';
+
+    const isActive = (path) =>
+        location.pathname === path || location.pathname.startsWith(path + '/');
 
     return (
         <nav className="navbar">
             <div className="nav-brand">
-                {/* Clicking the logo routes them to the correct dashboard */}
-                <Link 
-                    to={user ? (user.role === 'TEACHER' ? '/teacher/dashboard' : '/student/dashboard') : '/login'} 
-                    style={{ textDecoration: 'none', color: 'inherit' }}
-                >
-                    Focus Platform
-                </Link>
+                <Link to={homePath}>Focus Platform</Link>
             </div>
-            
+
             {user && (
                 <div className="nav-links">
-                    <span style={{ fontWeight: '500' }}>
-                        Welcome, {user.name} 
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '5px' }}>
-                            ({user.role})
-                        </span>
+                    {user.role === 'STUDENT' && (
+                        <>
+                            <Link
+                                to="/student/dashboard"
+                                className={`nav-link ${isActive('/student/dashboard') ? 'active' : ''}`}
+                            >
+                                Dashboard
+                            </Link>
+                            <Link
+                                to="/student/analytics"
+                                className={`nav-link ${isActive('/student/analytics') ? 'active' : ''}`}
+                            >
+                                Analytics
+                            </Link>
+                        </>
+                    )}
+                    {user.role === 'TEACHER' && (
+                        <Link
+                            to="/teacher/dashboard"
+                            className={`nav-link ${isActive('/teacher/dashboard') ? 'active' : ''}`}
+                        >
+                            Classrooms
+                        </Link>
+                    )}
+
+                    <span className="hidden text-sm font-medium text-[var(--text-muted)] sm:inline">
+                        {user.name}
+                        <span className="ml-1 text-xs opacity-70">({user.role})</span>
                     </span>
-                    <button className="btn btn-danger" onClick={handleLogout}>
+
+                    <button
+                        type="button"
+                        className="theme-toggle"
+                        onClick={toggleTheme}
+                        aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                    >
+                        {theme === 'dark' ? '☀️' : '🌙'}
+                    </button>
+
+                    <button type="button" className="btn btn-danger btn-sm" onClick={handleLogout}>
                         Logout
                     </button>
                 </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../../api/axiosConfig';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export default function StudentDashboard() {
     const [classrooms, setClassrooms] = useState([]);
@@ -17,11 +18,10 @@ export default function StudentDashboard() {
     const fetchMyClassrooms = async () => {
         try {
             setLoading(true);
-            // We will add this quick endpoint to your backend below!
             const response = await api.get('/student/my-classrooms');
             setClassrooms(response.data);
-        } catch (error) {
-            console.error("Failed to load classrooms", error);
+        } catch (err) {
+            console.error('Failed to load classrooms', err);
         } finally {
             setLoading(false);
         }
@@ -33,67 +33,93 @@ export default function StudentDashboard() {
         try {
             await api.post('/student/enroll', { inviteCode });
             setInviteCode('');
-            fetchMyClassrooms(); // Refresh the list
-        } catch (err) {
+            fetchMyClassrooms();
+        } catch {
             setError('Invalid invite code or you are already enrolled.');
         }
     };
 
-    if (loading) return <div className="p-6">Loading your dashboard...</div>;
+    if (loading) return <LoadingSpinner message="Loading your dashboard..." />;
 
     return (
-        <div className="p-6 max-w-6xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-                <h1 className="text-3xl font-bold text-gray-800">My Learning Dashboard</h1>
-                
-                {/* Enrollment Form */}
-                <form onSubmit={handleEnroll} className="flex gap-2">
-                    <input 
-                        className="input-field w-48" 
-                        placeholder="Enter Invite Code" 
-                        value={inviteCode} 
-                        onChange={(e) => setInviteCode(e.target.value)} 
-                        required 
-                    />
-                    <button type="submit" className="btn bg-green-600">Enroll</button>
-                </form>
+        <div className="page-container animate-fade-in">
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">My Learning Dashboard</h1>
+                    <p className="page-subtitle">Enroll in classrooms and track your progress</p>
+                </div>
+                <Link to="/student/analytics" className="btn btn-outline">
+                    View Analytics
+                </Link>
             </div>
-            {error && <p className="text-red-500 mb-4 font-bold">{error}</p>}
 
-            {/* Display Classrooms and their Courses */}
+            <div className="card mb-8">
+                <form onSubmit={handleEnroll} className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <input
+                        className="input-field sm:max-w-xs"
+                        placeholder="Enter invite code"
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value)}
+                        required
+                    />
+                    <button type="submit" className="btn" style={{ background: 'var(--success)' }}>
+                        Enroll in Classroom
+                    </button>
+                </form>
+                {error && <p className="mt-3 text-sm font-medium text-[var(--danger)]">{error}</p>}
+            </div>
+
             {classrooms.length === 0 ? (
-                <div className="card text-center py-12 text-gray-500">
-                    You haven't enrolled in any classrooms yet. Enter an invite code above to start!
+                <div className="card text-center py-12 text-[var(--text-muted)]">
+                    You haven&apos;t enrolled in any classrooms yet. Enter an invite code above to start!
                 </div>
             ) : (
-                classrooms.map(classroom => (
-                    <div key={classroom.id} className="mb-10">
-                        <h2 className="text-2xl font-bold mb-4 border-b pb-2 text-blue-900">
-                            {classroom.name} 
-                            <span className="text-sm font-normal text-gray-500 ml-3">Instructor: {classroom.teacher?.name}</span>
+                classrooms.map((classroom) => (
+                    <section key={classroom.id} className="mb-10">
+                        <h2 className="mb-4 border-b border-[var(--border)] pb-2 text-2xl font-bold text-[var(--primary)]">
+                            {classroom.name}
+                            <span className="ml-3 text-sm font-normal text-[var(--text-muted)]">
+                                Instructor: {classroom.teacher?.name}
+                            </span>
                         </h2>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {classroom.courses && classroom.courses.length > 0 ? (
-                                classroom.courses.map(course => (
-                                    <div key={course.id} className="card hover:shadow-lg transition-shadow flex flex-col justify-between">
+
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            {classroom.courses?.length > 0 ? (
+                                classroom.courses.map((course) => (
+                                    <div
+                                        key={course.id}
+                                        className="card flex flex-col justify-between"
+                                    >
                                         <div>
-                                            <h3 className="text-xl font-bold mb-2">{course.title}</h3>
-                                            <p className="text-gray-600 text-sm line-clamp-3 mb-6">{course.description}</p>
+                                            <h3 className="mb-2 text-xl font-bold">{course.title}</h3>
+                                            <p className="mb-4 line-clamp-3 text-sm text-[var(--text-muted)]">
+                                                {course.description}
+                                            </p>
                                         </div>
-                                        <button 
-                                            className="btn w-full bg-blue-600"
-                                            onClick={() => navigate(`/student/course/${course.id}`)}
-                                        >
-                                            Start Learning
-                                        </button>
+                                        <div className="flex flex-col gap-2">
+                                            <button
+                                                type="button"
+                                                className="btn w-full"
+                                                onClick={() => navigate(`/student/course/${course.id}`)}
+                                            >
+                                                Start Learning
+                                            </button>
+                                            <Link
+                                                to={`/student/course/${course.id}/leaderboard`}
+                                                className="btn btn-outline w-full text-center"
+                                            >
+                                                Leaderboard
+                                            </Link>
+                                        </div>
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-gray-500 italic">No courses published in this classroom yet.</p>
+                                <p className="italic text-[var(--text-muted)]">
+                                    No courses published in this classroom yet.
+                                </p>
                             )}
                         </div>
-                    </div>
+                    </section>
                 ))
             )}
         </div>

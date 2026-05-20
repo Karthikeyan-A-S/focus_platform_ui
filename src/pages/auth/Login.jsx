@@ -37,12 +37,12 @@ export default function Login() {
     };
 
     return (
-        <div className="container" style={{ maxWidth: '400px', marginTop: '50px' }}>
-            <div className="card">
-                <h2 style={{ marginBottom: '20px' }}>Login to Focus</h2>
-                
-                {successMessage && <div style={{ color: 'var(--success-color)', marginBottom: '15px', padding: '10px', background: '#e6f4ea', borderRadius: '4px' }}>{successMessage}</div>}
-                {error && <div style={{ color: 'var(--error-color)', marginBottom: '15px' }}>{error}</div>}
+        <div className="page-container flex min-h-[70vh] items-center justify-center">
+            <div className="card w-full max-w-md animate-fade-in">
+                <h2 className="mb-6 text-2xl font-bold text-[var(--text)]">Login to Focus</h2>
+
+                {successMessage && <div className="alert mb-4" style={{ color: 'var(--success)', background: 'var(--primary-muted)' }}>{successMessage}</div>}
+                {error && <div className="alert alert-error mb-4">{error}</div>}
                 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
@@ -67,14 +67,15 @@ export default function Login() {
                         />
                     </div>
                     
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }} disabled={loading}>
+                    <button type="submit" className="btn mt-4 w-full" disabled={loading}>
                         {loading ? 'Signing In...' : 'Sign In'}
                     </button>
                 </form>
 
-                <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '14px' }}>
-                    Don't have an account? <Link to="/register" style={{ color: 'var(--primary-color)' }}>Sign Up</Link>
-                </div>
+                <p className="mt-6 text-center text-sm text-[var(--text-muted)]">
+                    Don&apos;t have an account?{' '}
+                    <Link to="/register" className="font-semibold text-[var(--primary)]">Sign Up</Link>
+                </p>
             </div>
         </div>
     );

@@ -19,12 +19,11 @@ export const studentApi = {
         return response.data; // Returns array of Question objects (correctAnswer hidden)
     },
 
-    // Submit quiz for grading
+    // Submit quiz for grading — answersMap: { "questionId": "A"|"B"|"C"|"D" }
     submitQuiz: async (courseId, answersMap) => {
-        // answersMap should be an object like: { "1": "Option A", "2": "Option C" }
         const response = await api.post('/student/submit', {
             courseId: courseId,
-            answers: answersMap
+            answers: answersMap,
         });
         return response.data; // Returns "Course completed! You scored: X%"
     },

@@ -1,16 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export default function TeacherDashboard() {
     const [classrooms, setClassrooms] = useState([]);
     const [loading, setLoading] = useState(true);
-    
-    // Create States
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newClassroomName, setNewClassroomName] = useState('');
-
-    // Edit States
     const [editingClassroom, setEditingClassroom] = useState(null);
     const [editClassroomName, setEditClassroomName] = useState('');
 
@@ -25,7 +22,7 @@ export default function TeacherDashboard() {
             const response = await api.get('/teacher/classrooms');
             setClassrooms(response.data);
         } catch (error) {
-            console.error("Failed to load classrooms", error);
+            console.error('Failed to load classrooms', error);
         } finally {
             setLoading(false);
         }
@@ -39,11 +36,10 @@ export default function TeacherDashboard() {
             setNewClassroomName('');
             fetchClassrooms();
         } catch (error) {
-            console.error("Error creating classroom", error);
+            console.error('Error creating classroom', error);
         }
     };
 
-    // --- NEW: Update Handler ---
     const handleUpdateClassroom = async (e) => {
         e.preventDefault();
         try {
@@ -51,50 +47,60 @@ export default function TeacherDashboard() {
             setEditingClassroom(null);
             fetchClassrooms();
         } catch (error) {
-            console.error("Error updating classroom", error);
+            console.error('Error updating classroom', error);
         }
     };
 
-    // --- NEW: Delete Handler ---
     const handleDeleteClassroom = async (id) => {
-        if (window.confirm("Are you sure you want to delete this entire classroom? This cannot be undone.")) {
+        if (window.confirm('Are you sure you want to delete this entire classroom? This cannot be undone.')) {
             try {
                 await api.delete(`/teacher/classrooms/${id}`);
                 fetchClassrooms();
             } catch (error) {
-                console.error("Error deleting classroom", error);
+                console.error('Error deleting classroom', error);
             }
         }
     };
 
-    if (loading) return <div className="p-6">Loading your dashboard...</div>;
+    if (loading) return <LoadingSpinner message="Loading your dashboard..." />;
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-3xl font-bold">Teacher Dashboard</h1>
-                <button className="btn" onClick={() => setShowCreateModal(true)}>+ Create Classroom</button>
+        <div className="page-container animate-fade-in">
+            <div className="page-header">
+                <div>
+                    <h1 className="page-title">Teacher Dashboard</h1>
+                    <p className="page-subtitle">Manage classrooms, courses, students, and analytics</p>
+                </div>
+                <button type="button" className="btn" onClick={() => setShowCreateModal(true)}>
+                    + Create Classroom
+                </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {classrooms.map(classroom => (
-                    <div key={classroom.id} className="card relative">
-                        <h2 className="text-xl font-bold mb-2">{classroom.name}</h2>
-                        <p className="text-gray-600 mb-4">Invite Code: <span className="font-mono font-bold text-blue-600">{classroom.inviteCode}</span></p>
-                        
-                        <div className="flex gap-2 mb-4">
-                            <button 
-                                className="btn flex-1 bg-blue-500" 
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {classrooms.map((classroom) => (
+                    <div key={classroom.id} className="card">
+                        <h2 className="mb-2 text-xl font-bold">{classroom.name}</h2>
+                        <p className="mb-4 text-[var(--text-muted)]">
+                            Invite:{' '}
+                            <span className="font-mono font-bold text-[var(--primary)]">
+                                {classroom.inviteCode}
+                            </span>
+                        </p>
+
+                        <div className="flex flex-col gap-2">
+                            <button
+                                type="button"
+                                className="btn w-full"
                                 onClick={() => navigate(`/teacher/classroom/${classroom.id}`)}
                             >
-                                Manage Courses
+                                Manage Courses & Students
                             </button>
                         </div>
 
-                        {/* NEW: Edit/Delete Buttons */}
-                        <div className="flex justify-between border-t pt-3 mt-2">
-                            <button 
-                                className="text-sm text-gray-500 hover:text-blue-600 font-bold"
+                        <div className="mt-4 flex justify-between border-t border-[var(--border)] pt-3">
+                            <button
+                                type="button"
+                                className="text-sm font-bold text-[var(--text-muted)] hover:text-[var(--primary)]"
                                 onClick={() => {
                                     setEditingClassroom(classroom);
                                     setEditClassroomName(classroom.name);
@@ -102,8 +108,9 @@ export default function TeacherDashboard() {
                             >
                                 Edit Name
                             </button>
-                            <button 
-                                className="text-sm text-red-400 hover:text-red-600 font-bold"
+                            <button
+                                type="button"
+                                className="text-sm font-bold text-[var(--danger)]"
                                 onClick={() => handleDeleteClassroom(classroom.id)}
                             >
                                 Delete
@@ -113,32 +120,56 @@ export default function TeacherDashboard() {
                 ))}
             </div>
 
-            {/* CREATE MODAL */}
             {showCreateModal && (
                 <div className="modal-overlay">
-                    <div className="card modal-content">
-                        <h2 className="text-xl mb-4 font-bold">Create New Classroom</h2>
+                    <div className="modal-content">
+                        <h2 className="mb-4 text-xl font-bold">Create New Classroom</h2>
                         <form onSubmit={handleCreateClassroom}>
-                            <input className="input-field mb-4 w-full" placeholder="Classroom Name" value={newClassroomName} onChange={(e) => setNewClassroomName(e.target.value)} required />
+                            <input
+                                className="input-field mb-4"
+                                placeholder="Classroom Name"
+                                value={newClassroomName}
+                                onChange={(e) => setNewClassroomName(e.target.value)}
+                                required
+                            />
                             <div className="flex justify-end gap-2">
-                                <button type="button" className="btn bg-gray-400" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                                <button type="submit" className="btn bg-green-600">Create</button>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setShowCreateModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn" style={{ background: 'var(--success)' }}>
+                                    Create
+                                </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* EDIT MODAL */}
             {editingClassroom && (
                 <div className="modal-overlay">
-                    <div className="card modal-content">
-                        <h2 className="text-xl mb-4 font-bold">Edit Classroom</h2>
+                    <div className="modal-content">
+                        <h2 className="mb-4 text-xl font-bold">Edit Classroom</h2>
                         <form onSubmit={handleUpdateClassroom}>
-                            <input className="input-field mb-4 w-full" placeholder="Classroom Name" value={editClassroomName} onChange={(e) => setEditClassroomName(e.target.value)} required />
+                            <input
+                                className="input-field mb-4"
+                                placeholder="Classroom Name"
+                                value={editClassroomName}
+                                onChange={(e) => setEditClassroomName(e.target.value)}
+                                required
+                            />
                             <div className="flex justify-end gap-2">
-                                <button type="button" className="btn bg-gray-400" onClick={() => setEditingClassroom(null)}>Cancel</button>
-                                <button type="submit" className="btn bg-blue-600">Save Changes</button>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() => setEditingClassroom(null)}
+                                >
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn">Save Changes</button>
                             </div>
                         </form>
                     </div>
