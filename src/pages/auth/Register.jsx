@@ -6,21 +6,52 @@ export default function Register() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('STUDENT'); // Default to student
+    const [confirmPassword, setConfirmPassword] = useState(''); 
+    const [role, setRole] = useState('STUDENT');
+    
+    // NEW: Toggles for both password fields
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     
     const navigate = useNavigate();
 
+    const isValidEmail = (email) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
+    // NEW: Username validation (3-30 chars, letters, numbers, spaces, or underscores)
+    const isValidUsername = (username) => {
+        const usernameRegex = /^[a-zA-Z0-9_ ]{3,30}$/;
+        return usernameRegex.test(username);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError(null);
+        
+        if (!isValidUsername(name.trim())) {
+            setError('Name must be 3-30 characters long and contain only letters, numbers, or spaces.');
+            return;
+        }
+
+        if (!isValidEmail(email)) {
+            setError('Please enter a valid email address.');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            setError('Passwords do not match.');
+            return;
+        }
+
         setLoading(true);
         
         try {
-            await authApi.register(name, email, password, role);
-            // On successful registration, send them to the login page
+            await authApi.register(name.trim(), email, password, role);
             navigate('/login', { state: { message: 'Registration successful! Please log in.' } });
         } catch (err) {
             const msg = err.response?.data?.error || err.response?.data?.message;
@@ -39,7 +70,7 @@ export default function Register() {
                 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label>Full Name</label>
+                        <label>Full Name / Username</label>
                         <input 
                             type="text" 
                             className="input-field"
@@ -62,14 +93,44 @@ export default function Register() {
                     
                     <div className="form-group">
                         <label>Password</label>
-                        <input 
-                            type="password" 
-                            className="input-field"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required 
-                            minLength="6"
-                        />
+                        <div className="relative">
+                            <input 
+                                type={showPassword ? "text" : "password"} 
+                                className="input-field w-full pr-16"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required 
+                                minLength="6"
+                            />
+                            <button 
+                                type="button"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--primary)]"
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? 'Hide' : 'Show'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label>Confirm Password</label>
+                        <div className="relative">
+                            <input 
+                                type={showConfirmPassword ? "text" : "password"} 
+                                className="input-field w-full pr-16"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                required 
+                                minLength="6"
+                            />
+                            <button 
+                                type="button"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--primary)]"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            >
+                                {showConfirmPassword ? 'Hide' : 'Show'}
+                            </button>
+                        </div>
                     </div>
 
                     <div className="form-group">

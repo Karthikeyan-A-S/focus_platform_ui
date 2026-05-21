@@ -5,6 +5,7 @@ import { AuthContext } from '../../context/AuthContext';
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false); // NEW: Toggle state
     
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -13,7 +14,6 @@ export default function Login() {
     const navigate = useNavigate();
     const location = useLocation();
     
-    // Check if we were redirected here from the Register page with a success message
     const successMessage = location.state?.message;
 
     const handleSubmit = async (e) => {
@@ -23,7 +23,6 @@ export default function Login() {
         
         try {
             const role = await login(email, password);
-            // The AuthContext saves the token, we just need to route them to the right dashboard
             if (role === 'TEACHER') {
                 navigate('/teacher/dashboard');
             } else {
@@ -58,13 +57,23 @@ export default function Login() {
                     
                     <div className="form-group">
                         <label>Password</label>
-                        <input 
-                            type="password" 
-                            className="input-field"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required 
-                        />
+                        <div className="relative">
+                            <input 
+                                type={showPassword ? "text" : "password"} 
+                                className="input-field w-full pr-16"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required 
+                            />
+                            {/* NEW: Show/Hide Button */}
+                            <button 
+                                type="button"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--primary)]"
+                                onClick={() => setShowPassword(!showPassword)}
+                            >
+                                {showPassword ? 'Hide' : 'Show'}
+                            </button>
+                        </div>
                     </div>
                     
                     <button type="submit" className="btn mt-4 w-full" disabled={loading}>
