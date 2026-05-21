@@ -2,6 +2,7 @@ import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { FaRegLightbulb } from "react-icons/fa6";
 
 export default function Navbar() {
     const { user, logout } = useContext(AuthContext);
@@ -70,8 +71,12 @@ export default function Navbar() {
                         onClick={toggleTheme}
                         aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
                         title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                        style={{
+                            boxShadow: theme === 'dark' ? '0px 0px 10px 4px rgba(255, 255, 255, 0.75)' : 'none',
+                            transition: 'box-shadow 0.3s ease'
+                        }}
                     >
-                        {theme === 'dark' ? '☀️' : '🌙'}
+                        <FaRegLightbulb />
                     </button>
 
                     <button type="button" className="btn btn-danger btn-sm" onClick={handleLogout}>
