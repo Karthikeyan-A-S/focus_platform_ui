@@ -61,6 +61,7 @@ export default function Login() {
                             <input 
                                 type={showPassword ? "text" : "password"} 
                                 className="input-field w-full pr-16"
+                                style={{ paddingRight: '4rem' }} /* <-- Forces the padding to override .input-field */
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required 

@@ -1,122 +1,197 @@
-import { useEffect, useState } from 'react';
-import {
-    fetchClassroomStudents,
-    removeClassroomStudent,
-} from '../../api/teacherStudentsApi';
-import { getApiErrorMessage } from '../../utils/apiError';
-import ConfirmDialog from '../common/ConfirmDialog';
-import EmptyState from '../common/EmptyState';
+import { useState, useEffect } from 'react';
+import api from '../../api/axiosConfig';
 import LoadingSpinner from '../common/LoadingSpinner';
+import EmptyState from '../common/EmptyState';
 
 export default function ClassroomStudents({ classroomId }) {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [removing, setRemoving] = useState(null);
-    const [actionLoading, setActionLoading] = useState(false);
-    const [refreshKey, setRefreshKey] = useState(0);
+    
+    // Autocomplete State
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [suggestions, setSuggestions] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
 
     useEffect(() => {
-        let cancelled = false;
-        (async () => {
-            try {
-                setLoading(true);
-                setError('');
-                const data = await fetchClassroomStudents(classroomId);
-                if (!cancelled) setStudents(data);
-            } catch (err) {
-                if (!cancelled) setError(getApiErrorMessage(err));
-            } finally {
-                if (!cancelled) setLoading(false);
+        fetchStudents();
+    }, [classroomId]);
+
+    // --- Debounced Search Effect ---
+    // This waits until the user stops typing for 300ms before calling the API
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(() => {
+            if (searchQuery.trim().length >= 2) {
+                searchDatabaseForStudents(searchQuery);
+            } else {
+                setSuggestions([]); // Clear if less than 2 chars
             }
-        })();
-        return () => { cancelled = true; };
-    }, [classroomId, refreshKey]);
+        }, 300);
 
-    const loadStudents = () => setRefreshKey((k) => k + 1);
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery]);
 
-    const handleRemove = async () => {
-        if (!removing) return;
+    const fetchStudents = async () => {
         try {
-            setActionLoading(true);
-            await removeClassroomStudent(classroomId, removing.id);
-            setRemoving(null);
-            await loadStudents();
-        } catch (err) {
-            setError(getApiErrorMessage(err));
+            setLoading(true);
+            const response = await api.get(`/teacher/classrooms/${classroomId}/students`);
+            setStudents(response.data);
+        } catch (error) {
+            console.error('Failed to load students', error);
         } finally {
-            setActionLoading(false);
+            setLoading(false);
         }
     };
 
-    if (loading) return <LoadingSpinner message="Loading student roster..." />;
+    const searchDatabaseForStudents = async (query) => {
+        try {
+            setIsSearching(true);
+            const response = await api.get(`/teacher/students/search?query=${query}`);
+            
+            // Filter out students who are ALREADY in this classroom
+            const existingIds = new Set(students.map(s => s.id));
+            const filteredSuggestions = response.data.filter(s => !existingIds.has(s.id));
+            
+            setSuggestions(filteredSuggestions);
+        } catch (error) {
+            console.error('Search failed', error);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const handleInviteStudent = async (studentId) => {
+        try {
+            await api.post(`/teacher/classrooms/${classroomId}/students/${studentId}`);
+            setSearchQuery('');
+            setSuggestions([]);
+            setShowInviteModal(false);
+            fetchStudents(); // Refresh the list!
+        } catch (error) {
+            console.error('Failed to add student', error);
+        }
+    };
+
+    const handleRemoveStudent = async (studentId) => {
+        if (window.confirm('Are you sure you want to remove this student from the classroom?')) {
+            try {
+                await api.delete(`/teacher/classrooms/${classroomId}/students/${studentId}`);
+                fetchStudents();
+            } catch (error) {
+                console.error('Error removing student', error);
+            }
+        }
+    };
+
+    if (loading) return <LoadingSpinner message="Loading students..." />;
 
     return (
-        <div className="animate-fade-in">
-            <div className="page-header mb-6">
-                <div>
-                    <h2 className="text-2xl font-bold text-[var(--text)]">Classroom Students</h2>
-                    <p className="text-sm text-[var(--text-muted)]">
-                        View and manage enrolled students for this class
-                    </p>
-                </div>
-                <span className="rounded-full bg-[var(--primary-muted)] px-4 py-1 text-sm font-semibold text-[var(--primary)]">
-                    {students.length} student{students.length !== 1 ? 's' : ''}
-                </span>
+        <div>
+            <div className="mb-4 flex items-center justify-between border-b border-[var(--border)] pb-2">
+                <h2 className="text-xl font-bold">Enrolled Students ({students.length})</h2>
+                <button 
+                    className="btn btn-sm" 
+                    style={{ background: 'var(--success)' }}
+                    onClick={() => setShowInviteModal(true)}
+                >
+                    + Invite Student
+                </button>
             </div>
-
-            {error && <div className="alert alert-error mb-4">{error}</div>}
 
             {students.length === 0 ? (
                 <EmptyState
                     title="No students enrolled yet"
-                    description="Share your classroom invite code so students can join."
+                    description="Invite students using the button above or share your classroom invite code."
                     icon="🎓"
                 />
             ) : (
-                <div className="overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-                    <table className="w-full text-sm">
-                        <thead className="border-b border-[var(--border)] bg-[var(--surface)]">
-                            <tr>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-[var(--text-muted)]">Name</th>
-                                <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-[var(--text-muted)]">Email</th>
-                                <th className="px-4 py-3 text-right text-xs font-semibold uppercase text-[var(--text-muted)]">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[var(--border)]">
-                            {students.map((student) => (
-                                <tr key={student.id} className="hover:bg-[var(--surface)]">
-                                    <td className="px-4 py-3 font-medium text-[var(--text)]">{student.name}</td>
-                                    <td className="px-4 py-3 text-[var(--text-muted)]">{student.email}</td>
-                                    <td className="px-4 py-3 text-right">
-                                        <button
-                                            type="button"
-                                            className="btn btn-danger btn-sm"
-                                            onClick={() => setRemoving(student)}
-                                            disabled={actionLoading}
-                                        >
-                                            Remove
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {students.map((student) => (
+                        <div key={student.id} className="card flex items-center justify-between py-3">
+                            <div>
+                                <p className="font-bold text-[var(--text)]">{student.name}</p>
+                                <p className="text-sm text-[var(--text-muted)]">{student.email}</p>
+                            </div>
+                            <button
+                                type="button"
+                                className="text-sm font-bold text-[var(--danger)] hover:underline"
+                                onClick={() => handleRemoveStudent(student.id)}
+                            >
+                                Remove
+                            </button>
+                        </div>
+                    ))}
                 </div>
             )}
 
-            <ConfirmDialog
-                open={!!removing}
-                title="Remove student?"
-                message={
-                    removing
-                        ? `Remove ${removing.name} (${removing.email}) from this classroom? They will lose access to its courses.`
-                        : ''
-                }
-                confirmLabel={actionLoading ? 'Removing...' : 'Remove'}
-                onConfirm={handleRemove}
-                onCancel={() => !actionLoading && setRemoving(null)}
-            />
+            {/* INVITE MODAL WITH AUTOCOMPLETE */}
+            {showInviteModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content max-w-md min-h-[400px]">
+                        <h2 className="mb-4 text-xl font-bold">Invite a Student</h2>
+                        
+                        <div className="relative">
+                            <input
+                                type="text"
+                                className="input-field mb-2"
+                                placeholder="Start typing student's name..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                autoFocus
+                            />
+                            {isSearching && (
+                                <span className="absolute right-3 top-3 text-sm text-[var(--text-muted)]">
+                                    Searching...
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Search Results Dropdown Area */}
+                        <div className="mt-2 flex-1 overflow-y-auto max-h-[250px] rounded border border-[var(--border)] bg-[var(--surface)]">
+                            {searchQuery.trim().length < 2 ? (
+                                <p className="p-4 text-center text-sm text-[var(--text-muted)]">
+                                    Type at least 2 characters to search.
+                                </p>
+                            ) : suggestions.length === 0 && !isSearching ? (
+                                <p className="p-4 text-center text-sm text-[var(--text-muted)]">
+                                    No matching students found outside this classroom.
+                                </p>
+                            ) : (
+                                <ul>
+                                    {suggestions.map(user => (
+                                        <li 
+                                            key={user.id} 
+                                            className="flex cursor-pointer items-center justify-between border-b border-[var(--border)] p-3 hover:bg-[var(--primary-muted)] transition-colors"
+                                            onClick={() => handleInviteStudent(user.id)}
+                                        >
+                                            <div>
+                                                <p className="font-bold text-sm">{user.name}</p>
+                                            </div>
+                                            <span className="text-xs font-bold text-[var(--primary)]">
+                                                Add +
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+
+                        <div className="mt-6 flex justify-end">
+                            <button
+                                type="button"
+                                className="btn btn-secondary w-full"
+                                onClick={() => {
+                                    setShowInviteModal(false);
+                                    setSearchQuery('');
+                                    setSuggestions([]);
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

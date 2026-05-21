@@ -97,6 +97,7 @@ export default function Register() {
                             <input 
                                 type={showPassword ? "text" : "password"} 
                                 className="input-field w-full pr-16"
+                                style={{ paddingRight: '4rem' }} /* <-- Forces the padding to override .input-field */
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 required 
@@ -105,6 +106,7 @@ export default function Register() {
                             <button 
                                 type="button"
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--primary)]"
+                                style={{ paddingRight: '4rem' }} /* <-- Forces the padding to override .input-field */
                                 onClick={() => setShowPassword(!showPassword)}
                             >
                                 {showPassword ? 'Hide' : 'Show'}
