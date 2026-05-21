@@ -101,15 +101,25 @@ body {
   color: var(--primary);
 }
 
-/* Buttons — explicit colors so hover never goes white-on-white */
+/* Base Buttons - Now cleanly defaults to primary */
 button.btn,
 a.btn {
   @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all;
-  border: none;
+  border: 1px solid transparent;
   cursor: pointer;
   text-decoration: none;
+  background: var(--primary);
+  color: #ffffff !important;
 }
 
+button.btn:hover:not(:disabled),
+a.btn:hover:not(:disabled) {
+  /* background: var(--primary-hover); */
+  background-color: #334155;
+  color: #ffffff !important;
+}
+
+/* Button Variants (These will cascade nicely over the base rules) */
 .btn-primary {
   background: var(--primary);
   color: #ffffff !important;
@@ -171,16 +181,6 @@ a.btn {
 .btn-ghost:hover:not(:disabled) {
   background: var(--surface);
   color: var(--text) !important;
-}
-
-/* Legacy: plain .btn without variant = primary */
-.btn:not(.btn-primary):not(.btn-secondary):not(.btn-outline):not(.btn-danger):not(.btn-ghost):not(.btn-success) {
-  background: var(--primary);
-  color: #ffffff !important;
-}
-.btn:not(.btn-primary):not(.btn-secondary):not(.btn-outline):not(.btn-danger):not(.btn-ghost):not(.btn-success):hover:not(:disabled) {
-  background: var(--primary-hover);
-  color: #ffffff !important;
 }
 
 .btn-sm {

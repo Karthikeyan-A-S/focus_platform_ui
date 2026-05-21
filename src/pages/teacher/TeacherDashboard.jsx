@@ -76,7 +76,7 @@ export default function TeacherDashboard() {
         <div className="page-container animate-fade-in">
             <div className="page-header">
                 <div>
-                    <h1 className="page-title">Teacher Dashboard</h1>
+                    <h1 className="page-title">Dashboard</h1>
                     <p className="page-subtitle">Manage classrooms, courses, students, and analytics</p>
                 </div>
                 <button type="button" className="btn" onClick={() => setShowCreateModal(true)}>
