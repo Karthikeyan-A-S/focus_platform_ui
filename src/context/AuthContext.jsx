@@ -12,9 +12,15 @@ export const AuthProvider = ({ children }) => {
         const role = localStorage.getItem('user_role');
         const name = localStorage.getItem('user_name');
         const id = localStorage.getItem('user_id');
+        const email = localStorage.getItem('user_email'); // <-- Added Email
 
         if (role && name) {
-            setUser({ role, name, id: id ? Number(id) : undefined });
+            setUser({ 
+                role, 
+                name, 
+                email, // <-- Added Email
+                id: id ? Number(id) : undefined 
+            });
         }
         setLoading(false);
     }, []);
@@ -25,9 +31,10 @@ export const AuthProvider = ({ children }) => {
             const response = await api.post('/auth/login', { email, password });
             const data = response.data;
 
-            // Save the user details (but NOT the token, that is safely in the HttpOnly cookie!)
+            // Save the user details (but NOT the token!)
             localStorage.setItem('user_role', data.role);
             localStorage.setItem('user_name', data.name);
+            localStorage.setItem('user_email', data.email); // <-- Added Email
             if (data.id != null) {
                 localStorage.setItem('user_id', String(data.id));
             }
@@ -35,6 +42,7 @@ export const AuthProvider = ({ children }) => {
             setUser({
                 role: data.role,
                 name: data.name,
+                email: data.email, // <-- Added Email
                 id: data.id != null ? Number(data.id) : undefined,
             });
             return data.role;
@@ -47,12 +55,13 @@ export const AuthProvider = ({ children }) => {
     // 3. ON LOGOUT: Tell backend to destroy cookie, then wipe memory
     const logout = async () => {
         try {
-            await api.post('/auth/logout'); // Destroys the HttpOnly cookie
+            await api.post('/auth/logout'); 
         } catch (err) {
             console.error("Logout failed on backend", err);
         } finally {
             localStorage.removeItem('user_role');
             localStorage.removeItem('user_name');
+            localStorage.removeItem('user_email'); // <-- Added Email
             localStorage.removeItem('user_id');
             setUser(null);
         }

@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { FaRegLightbulb } from "react-icons/fa6";
+import { FaRegLightbulb, FaUserCircle } from "react-icons/fa"; // Added FaUserCircle
 
 export default function Navbar() {
     const { user, logout } = useContext(AuthContext);
@@ -34,7 +34,7 @@ export default function Navbar() {
             </div>
 
             {user && (
-                <div className="nav-links">
+                <div className="nav-links flex items-center gap-4">
                     {user.role === 'STUDENT' && (
                         <>
                             <Link
@@ -60,10 +60,18 @@ export default function Navbar() {
                         </Link>
                     )}
 
-                    <span className="hidden text-sm font-medium text-[var(--text-muted)] sm:inline">
-                        {user.name}
-                        <span className="ml-1 text-xs opacity-70">({user.role})</span>
-                    </span>
+                    {/* NEW: Clickable Profile Link */}
+                    <Link
+                        to="/profile"
+                        className={`nav-link flex items-center gap-2 ${isActive('/profile') ? 'active' : ''}`}
+                        title="View Profile"
+                    >
+                        <FaUserCircle className="text-lg" />
+                        <span className="hidden text-sm font-medium sm:inline">
+                            {user.name}
+                            <span className="ml-1 text-xs opacity-70">({user.role})</span>
+                        </span>
+                    </Link>
 
                     <button
                         type="button"

@@ -16,7 +16,8 @@ import StudentDashboard from './pages/student/StudentDashboard';
 import StudentAnalytics from './pages/student/StudentAnalytics';
 import CoursePlayer from './pages/student/CoursePlayer';
 import CourseLeaderboard from './pages/student/CourseLeaderboard';
-
+import Profile from './pages/Profile'; // Adjust the import path as needed
+import UserProfile from './pages/UserProfile'; // Import it at the top
 const ProtectedRoute = ({ children, allowedRole }) => {
     const { user, loading } = useContext(AuthContext);
 
@@ -107,6 +108,8 @@ export default function App() {
                             />
 
                             <Route path="*" element={<Navigate to="/login" />} />
+                            <Route path="/profile" element={<Profile />} />
+                            <Route path="/profile/:id" element={<UserProfile />} />
                         </Routes>
                     </MainLayout>
                 </BrowserRouter>
