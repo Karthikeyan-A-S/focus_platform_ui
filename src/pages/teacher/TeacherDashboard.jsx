@@ -10,6 +10,7 @@ export default function TeacherDashboard() {
     const [newClassroomName, setNewClassroomName] = useState('');
     const [editingClassroom, setEditingClassroom] = useState(null);
     const [editClassroomName, setEditClassroomName] = useState('');
+    const [copiedId, setCopiedId] = useState(null); // tracks which classroom was just copied
 
     const navigate = useNavigate();
 
@@ -26,6 +27,13 @@ export default function TeacherDashboard() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleCopyInviteCode = (classroom) => {
+        navigator.clipboard.writeText(classroom.inviteCode).then(() => {
+            setCopiedId(classroom.id);
+            setTimeout(() => setCopiedId(null), 2000); // reset after 2s
+        });
     };
 
     const handleCreateClassroom = async (e) => {
@@ -82,9 +90,18 @@ export default function TeacherDashboard() {
                         <h2 className="mb-2 text-xl font-bold">{classroom.name}</h2>
                         <p className="mb-4 text-[var(--text-muted)]">
                             Invite:{' '}
-                            <span className="font-mono font-bold text-[var(--primary)]">
+                            <span
+                                className="cursor-pointer font-mono font-bold text-[var(--primary)] hover:underline"
+                                title="Click to copy"
+                                onClick={() => handleCopyInviteCode(classroom)}
+                            >
                                 {classroom.inviteCode}
                             </span>
+                            {copiedId === classroom.id && (
+                                <span className="ml-2 text-xs font-semibold text-[var(--success)]">
+                                    Copied!
+                                </span>
+                            )}
                         </p>
 
                         <div className="flex flex-col gap-2">

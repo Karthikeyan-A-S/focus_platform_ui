@@ -26,7 +26,10 @@ export default function Navbar() {
     return (
         <nav className="navbar">
             <div className="nav-brand">
-                <Link to={homePath}>Focus Platform</Link>
+                <Link to={homePath} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <img src="/icon.png" alt="Focus Platform" style={{ height: '28px', width: '28px', objectFit: 'contain' }} />
+                     FocusIQ
+                </Link>
             </div>
 
             {user && (
