@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../api/axiosConfig';
+import { fetchStudentAnalytics } from '../../api/analyticsApi';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 export default function StudentDashboard() {
     const [classrooms, setClassrooms] = useState([]);
+    const [completedCourseIds, setCompletedCourseIds] = useState(new Set());
     const [inviteCode, setInviteCode] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -12,16 +14,28 @@ export default function StudentDashboard() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        fetchMyClassrooms();
+        fetchDashboardData();
     }, []);
 
-    const fetchMyClassrooms = async () => {
+    const fetchDashboardData = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/student/my-classrooms');
-            setClassrooms(response.data);
+            
+            // Fetch both classrooms and analytics at the same time for speed
+            const [classroomsRes, analyticsRes] = await Promise.all([
+                api.get('/student/my-classrooms'),
+                fetchStudentAnalytics().catch(() => null) // Catch error gracefully if analytics are empty
+            ]);
+
+            setClassrooms(classroomsRes.data);
+
+            // If we have analytics, extract the IDs of all courses the student has taken
+            if (analyticsRes && analyticsRes.byCourse) {
+                const completedIds = analyticsRes.byCourse.map(c => c.courseId);
+                setCompletedCourseIds(new Set(completedIds));
+            }
         } catch (err) {
-            console.error('Failed to load classrooms', err);
+            console.error('Failed to load dashboard data', err);
         } finally {
             setLoading(false);
         }
@@ -33,7 +47,7 @@ export default function StudentDashboard() {
         try {
             await api.post('/student/enroll', { inviteCode });
             setInviteCode('');
-            fetchMyClassrooms();
+            fetchDashboardData(); // Refresh everything after enrolling
         } catch {
             setError('Invalid invite code or you are already enrolled.');
         }
@@ -85,34 +99,48 @@ export default function StudentDashboard() {
 
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                             {classroom.courses?.length > 0 ? (
-                                classroom.courses.map((course) => (
-                                    <div
-                                        key={course.id}
-                                        className="card flex flex-col justify-between"
-                                    >
-                                        <div>
-                                            <h3 className="mb-2 text-xl font-bold">{course.title}</h3>
-                                            <p className="mb-4 line-clamp-3 text-sm text-[var(--text-muted)]">
-                                                {course.description}
-                                            </p>
+                                classroom.courses.map((course) => {
+                                    // Check if this specific course is in our Set of completed IDs
+                                    const isCompleted = completedCourseIds.has(course.id);
+
+                                    return (
+                                        <div
+                                            key={course.id}
+                                            className={`card flex flex-col justify-between ${
+                                                isCompleted ? 'border-l-4 border-[var(--success)] bg-[var(--surface)]' : ''
+                                            }`}
+                                        >
+                                            <div>
+                                                <div className="flex items-start justify-between mb-2">
+                                                    <h3 className="text-xl font-bold">{course.title}</h3>
+                                                    {isCompleted && (
+                                                        <span className="badge bg-[var(--success-muted)] text-[var(--success)] text-xs ml-2">
+                                                            ✅ 
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="mb-4 line-clamp-3 text-sm text-[var(--text-muted)]">
+                                                    {course.description}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <button
+                                                    type="button"
+                                                    className={`btn w-full ${isCompleted ? 'btn-secondary' : ''}`}
+                                                    onClick={() => navigate(`/student/course/${course.id}`)}
+                                                >
+                                                    {isCompleted ? 'Review Course' : 'Start Learning'}
+                                                </button>
+                                                <Link
+                                                    to={`/student/course/${course.id}/leaderboard`}
+                                                    className="btn btn-outline w-full text-center"
+                                                >
+                                                    Leaderboard
+                                                </Link>
+                                            </div>
                                         </div>
-                                        <div className="flex flex-col gap-2">
-                                            <button
-                                                type="button"
-                                                className="btn w-full"
-                                                onClick={() => navigate(`/student/course/${course.id}`)}
-                                            >
-                                                Start Learning
-                                            </button>
-                                            <Link
-                                                to={`/student/course/${course.id}/leaderboard`}
-                                                className="btn btn-outline w-full text-center"
-                                            >
-                                                Leaderboard
-                                            </Link>
-                                        </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             ) : (
                                 <p className="italic text-[var(--text-muted)]">
                                     No courses published in this classroom yet.

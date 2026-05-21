@@ -36,14 +36,31 @@ export default function ClassroomManager() {
             const response = await api.get(`/teacher/classrooms/${classroomId}/courses`);
             setCourses(response.data);
 
+            // FIX: If a course is already open, we need to refresh its special teacher questions
             if (selectedCourse) {
                 const updatedCourse = response.data.find((c) => c.id === selectedCourse.id);
-                setSelectedCourse(updatedCourse || null);
+                if (updatedCourse) {
+                    const qRes = await api.get(`/teacher/courses/${updatedCourse.id}/questions`);
+                    setSelectedCourse({ ...updatedCourse, questions: qRes.data });
+                } else {
+                    setSelectedCourse(null);
+                }
             }
         } catch (error) {
             console.error('Failed to load courses', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // FIX: When a teacher clicks a course, specifically fetch the DTOs so answers are visible!
+    const handleSelectCourse = async (course) => {
+        try {
+            const qRes = await api.get(`/teacher/courses/${course.id}/questions`);
+            setSelectedCourse({ ...course, questions: qRes.data });
+        } catch (error) {
+            console.error("Failed to fetch questions", error);
+            setSelectedCourse(course);
         }
     };
 
@@ -314,9 +331,7 @@ export default function ClassroomManager() {
                                 <select
                                     className="input-field mb-6"
                                     value={questionForm.correctAnswer}
-                                    onChange={(e) =>
-                                        setQuestionForm({ ...questionForm, correctAnswer: e.target.value })
-                                    }
+                                    onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
                                     required
                                 >
                                     {['optA', 'optB', 'optC', 'optD']
@@ -331,9 +346,6 @@ export default function ClassroomManager() {
                                             </option>
                                         ))}
                                 </select>
-                                <p className="mb-4 text-xs text-[var(--text-muted)]">
-                                    Students submit A, B, C, or D; the backend matches this letter to the option above.
-                                </p>
                                 <div className="flex justify-end gap-2">
                                     <button
                                         type="button"
@@ -434,8 +446,8 @@ export default function ClassroomManager() {
                         <div
                             key={course.id}
                             className="card flex cursor-pointer flex-col justify-between"
-                            onClick={() => setSelectedCourse(course)}
-                            onKeyDown={(e) => e.key === 'Enter' && setSelectedCourse(course)}
+                            onClick={() => handleSelectCourse(course)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSelectCourse(course)}
                             role="button"
                             tabIndex={0}
                         >
@@ -448,7 +460,7 @@ export default function ClassroomManager() {
                                 <button
                                     type="button"
                                     className="btn btn-sm flex-1"
-                                    onClick={() => setSelectedCourse(course)}
+                                    onClick={() => handleSelectCourse(course)}
                                 >
                                     Manage
                                 </button>
