@@ -18,6 +18,7 @@ export default function ClassroomManager() {
     const [showContentModal, setShowContentModal] = useState(false);
     const [showQuestionModal, setShowQuestionModal] = useState(false);
     const [editingCourse, setEditingCourse] = useState(null);
+    const [editingContent, setEditingContent] = useState(null); // NEW: State for editing content
     const [editingQuestion, setEditingQuestion] = useState(null);
 
     const [courseForm, setCourseForm] = useState({ title: '', description: '' });
@@ -36,7 +37,6 @@ export default function ClassroomManager() {
             const response = await api.get(`/teacher/classrooms/${classroomId}/courses`);
             setCourses(response.data);
 
-            // FIX: If a course is already open, we need to refresh its special teacher questions
             if (selectedCourse) {
                 const updatedCourse = response.data.find((c) => c.id === selectedCourse.id);
                 if (updatedCourse) {
@@ -53,7 +53,6 @@ export default function ClassroomManager() {
         }
     };
 
-    // FIX: When a teacher clicks a course, specifically fetch the DTOs so answers are visible!
     const handleSelectCourse = async (course) => {
         try {
             const qRes = await api.get(`/teacher/courses/${course.id}/questions`);
@@ -89,6 +88,35 @@ export default function ClassroomManager() {
             fetchCourses();
         } catch (error) {
             console.error('Error adding content', error);
+        }
+    };
+
+    // NEW: Update Content function
+    const handleUpdateContent = async (e) => {
+        e.preventDefault();
+        try {
+            await api.put(`/teacher/content/${editingContent.id}`, {
+                courseId: selectedCourse.id,
+                contentType: 'TEXT',
+                ...contentForm,
+            });
+            setEditingContent(null);
+            setContentForm({ bodyText: '' });
+            fetchCourses();
+        } catch (error) {
+            console.error('Error updating content', error);
+        }
+    };
+
+    // NEW: Delete Content function
+    const handleDeleteContent = async (id) => {
+        if (window.confirm('Delete this lesson content?')) {
+            try {
+                await api.delete(`/teacher/content/${id}`);
+                fetchCourses();
+            } catch (error) {
+                console.error('Error deleting content', error);
+            }
         }
     };
 
@@ -230,9 +258,34 @@ export default function ClassroomManager() {
                             + Add Content
                         </button>
                     </div>
-                    {selectedCourse.contents?.map((content) => (
-                        <div key={content.id} className="card mb-2 bg-[var(--surface)]">
-                            <p>{content.bodyText}</p>
+                    {/* NEW: Updated Content render to show Edit and Delete buttons */}
+                    {selectedCourse.contents?.map((content, index) => (
+                        <div key={content.id} className="card relative mb-3 bg-[var(--surface)] border-l-4 border-[var(--primary)]">
+                            <div className="flex justify-between gap-4">
+                                <div className="mb-2 text-md leading-relaxed whitespace-pre-wrap flex-1">
+                                    <span className="font-bold mr-2 text-[var(--primary)]">Part {index + 1}:</span>
+                                    {content.bodyText}
+                                </div>
+                                <div className="flex shrink-0 gap-3">
+                                    <button
+                                        type="button"
+                                        className="text-sm font-bold text-[var(--primary)]"
+                                        onClick={() => {
+                                            setContentForm({ bodyText: content.bodyText });
+                                            setEditingContent(content);
+                                        }}
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="text-sm font-bold text-[var(--danger)]"
+                                        onClick={() => handleDeleteContent(content.id)}
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -372,11 +425,14 @@ export default function ClassroomManager() {
                     </div>
                 )}
 
-                {showContentModal && (
+                {/* NEW: Updated Content Modal to handle edits */}
+                {(showContentModal || editingContent) && (
                     <div className="modal-overlay">
                         <div className="modal-content max-w-lg">
-                            <h2 className="mb-4 text-xl font-bold">Add Course Content</h2>
-                            <form onSubmit={handleCreateContent}>
+                            <h2 className="mb-4 text-xl font-bold">
+                                {editingContent ? 'Edit Course Content' : 'Add Course Content'}
+                            </h2>
+                            <form onSubmit={editingContent ? handleUpdateContent : handleCreateContent}>
                                 <textarea
                                     className="input-field mb-4 h-40"
                                     placeholder="Enter lesson text..."
@@ -388,11 +444,17 @@ export default function ClassroomManager() {
                                     <button
                                         type="button"
                                         className="btn btn-secondary"
-                                        onClick={() => setShowContentModal(false)}
+                                        onClick={() => {
+                                            setShowContentModal(false);
+                                            setEditingContent(null);
+                                            setContentForm({ bodyText: '' });
+                                        }}
                                     >
                                         Cancel
                                     </button>
-                                    <button type="submit" className="btn">Save Content</button>
+                                    <button type="submit" className="btn">
+                                        {editingContent ? 'Save Changes' : 'Save Content'}
+                                    </button>
                                 </div>
                             </form>
                         </div>
@@ -553,4 +615,4 @@ export default function ClassroomManager() {
             )}
         </div>
     );
-}
+}   
