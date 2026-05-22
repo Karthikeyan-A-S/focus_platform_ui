@@ -17,25 +17,28 @@ export const studentApi = {
     },
 
     submitQuiz: async (courseId, answers) => {
+        // FIX: Always convert keys to numbers here — JS object keys are always
+        // strings, but the backend expects Map<Long, String>
+        const numericAnswers = {};
+        for (const [key, value] of Object.entries(answers)) {
+            numericAnswers[Number(key)] = value;
+        }
+
         const body = {
             courseId: Number(courseId),
-            answers: answers, 
+            answers: numericAnswers,
         };
 
-        try {
-            const response = await api.post('/student/quiz/submit', body);
-            return response.data;
-        } catch (err) {
-            if (err.response?.status === 404) {
-                const fallback = await api.post('/student/submit', body);
-                return fallback.data;
-            }
-            throw err;
-        }
+        console.log("Submitting quiz payload:", JSON.stringify(body));
+
+        // Primary endpoint from StudentController: POST /api/student/submit
+        const response = await api.post('/student/submit', body);
+        return response.data;
     },
 
     getEnrolledClassrooms: async () => {
-        const response = await api.get('/student/classrooms');
+        // FIX: Correct endpoint from StudentController is /student/my-classrooms
+        const response = await api.get('/student/my-classrooms');
         return response.data;
     },
 };

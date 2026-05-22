@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 import { studentApi } from '../../api/studentApi';
+import { fetchStudentAnalytics } from '../../api/analyticsApi'; // ✅ ADDED
 import { getApiErrorMessage } from '../../utils/apiError';
 import {
     parseQuestionOptions,
@@ -19,6 +20,7 @@ export default function CoursePlayer() {
     const [questions, setQuestions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [hasCompleted, setHasCompleted] = useState(false);
 
     /** questionId -> 'A' | 'B' | 'C' | 'D' */
     const [answers, setAnswers] = useState({});
@@ -26,13 +28,36 @@ export default function CoursePlayer() {
     useEffect(() => {
         setAnswers({});
         setView('content');
+        setHasCompleted(false);
         loadCourseData();
     }, [courseId]);
 
     const loadCourseData = async () => {
         try {
             setLoading(true);
-            await api.post(`/student/courses/${courseId}/start`);
+
+            // ✅ FIX: Use fetchStudentAnalytics — same approach that works in StudentDashboard
+            try {
+                const analyticsRes = await fetchStudentAnalytics();
+                if (analyticsRes && analyticsRes.byCourse) {
+                    const isDone = analyticsRes.byCourse.some(
+                        (c) => String(c.courseId) === String(courseId)
+                    );
+                    if (isDone) {
+                        console.log("Analytics confirms course is completed — locking UI");
+                        setHasCompleted(true);
+                    }
+                }
+            } catch (e) {
+                console.error("Analytics check failed", e);
+            }
+
+            // Start the course session (just for tracking startedAt)
+            try {
+                await api.post(`/student/courses/${courseId}/start`);
+            } catch (startError) {
+                // Ignore — don't rely on this for the lock
+            }
 
             const [contentRes, questionRes] = await Promise.all([
                 api.get(`/student/courses/${courseId}/content`),
@@ -49,6 +74,7 @@ export default function CoursePlayer() {
     };
 
     const handleOptionSelect = (questionId, letter) => {
+        if (hasCompleted) return;
         setAnswers((prev) => ({
             ...prev,
             [questionId]: letter.toUpperCase(),
@@ -56,6 +82,8 @@ export default function CoursePlayer() {
     };
 
     const handleSubmitQuiz = async () => {
+        if (hasCompleted) return;
+
         const unanswered = questions.filter((q) => !answers[getQuestionId(q)]);
         if (unanswered.length > 0) {
             alert(`Please answer all ${questions.length} questions before submitting.`);
@@ -64,18 +92,38 @@ export default function CoursePlayer() {
 
         try {
             setSubmitting(true);
-            console.log("SENDING ANSWERS TO API:", answers);
-            // Send the raw dictionary of answers directly to the API
-            const result = await studentApi.submitQuiz(courseId, answers);
+
+            // Convert string keys to numbers — backend expects Map<Long, String>
+            const numericAnswers = {};
+            for (const [key, value] of Object.entries(answers)) {
+                numericAnswers[Number(key)] = value;
+            }
+
+            console.log("Submitting:", { courseId: Number(courseId), answers: numericAnswers });
+
+            const result = await studentApi.submitQuiz(courseId, numericAnswers);
             const msg =
                 typeof result === 'string'
                     ? result
                     : result?.message || 'Quiz submitted successfully!';
+
+            setHasCompleted(true);
             alert(msg);
             navigate('/student/dashboard');
+
         } catch (error) {
-            console.error('Error submitting quiz', error);
-            alert(`Submission failed: ${getApiErrorMessage(error)}`);
+            const status = error.response?.status;
+            const message = error.response?.data || error.message;
+
+            console.error('Submit error:', status, message);
+
+            if (status === 409) {
+                setHasCompleted(true);
+                alert("You have already completed this course!");
+                navigate('/student/dashboard');
+            } else {
+                alert(`Submission failed: ${message || getApiErrorMessage(error)}`);
+            }
         } finally {
             setSubmitting(false);
         }
@@ -134,10 +182,15 @@ export default function CoursePlayer() {
                 <div>
                     <div className="mb-6 flex items-center justify-between border-b border-[var(--border)] pb-4">
                         <h1 className="page-title">Knowledge Check</h1>
-                        <span className="badge">
-                            {questions.length} Questions
-                        </span>
+                        <span className="badge">{questions.length} Questions</span>
                     </div>
+
+                    {/* Completion banner */}
+                    {hasCompleted && (
+                        <div className="mb-6 p-4 rounded-lg bg-[var(--success)]/10 border border-[var(--success)]/30 text-[var(--success)] text-center font-bold">
+                            ✅ You have already completed this course.
+                        </div>
+                    )}
 
                     {questions.length === 0 ? (
                         <p className="italic text-[var(--text-muted)]">
@@ -162,7 +215,7 @@ export default function CoursePlayer() {
                                             return (
                                                 <label
                                                     key={`${qid}-${letter}`}
-                                                    className={`quiz-option ${selected ? 'quiz-option-selected' : ''}`}
+                                                    className={`quiz-option ${selected ? 'quiz-option-selected' : ''} ${hasCompleted ? 'cursor-not-allowed opacity-60' : ''}`}
                                                 >
                                                     <input
                                                         type="radio"
@@ -170,11 +223,10 @@ export default function CoursePlayer() {
                                                         value={letter}
                                                         checked={selected}
                                                         onChange={() => handleOptionSelect(qid, letter)}
+                                                        disabled={hasCompleted}
                                                     />
                                                     <span className="quiz-option-text">
-                                                        <strong className="quiz-option-letter">
-                                                            {letter}.
-                                                        </strong>{' '}
+                                                        <strong className="quiz-option-letter">{letter}.</strong>{' '}
                                                         {opt}
                                                     </span>
                                                 </label>
@@ -194,13 +246,22 @@ export default function CoursePlayer() {
                         >
                             ← Back to Reading
                         </button>
+
                         <button
                             type="button"
-                            className="btn btn-primary px-8 text-lg"
+                            className={`btn px-8 text-lg transition-colors ${
+                                hasCompleted || submitting || questions.length === 0
+                                    ? 'bg-gray-400 text-white cursor-not-allowed opacity-60 pointer-events-none'
+                                    : 'btn-primary'
+                            }`}
                             onClick={handleSubmitQuiz}
-                            disabled={submitting || questions.length === 0}
+                            disabled={hasCompleted || submitting || questions.length === 0}
                         >
-                            {submitting ? 'Submitting...' : 'Submit Quiz'}
+                            {hasCompleted
+                                ? '✅ Course Completed'
+                                : submitting
+                                ? 'Submitting...'
+                                : 'Submit Quiz'}
                         </button>
                     </div>
                 </div>
