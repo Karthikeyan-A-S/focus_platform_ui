@@ -10,13 +10,41 @@ export default function TeacherDashboard() {
     const [newClassroomName, setNewClassroomName] = useState('');
     const [editingClassroom, setEditingClassroom] = useState(null);
     const [editClassroomName, setEditClassroomName] = useState('');
-    const [copiedId, setCopiedId] = useState(null); // tracks which classroom was just copied
+    const [copiedId, setCopiedId] = useState(null); 
+    
+    // NEW: State for tracking unread messages
+    const [totalUnreadCounts, setTotalUnreadCounts] = useState({});
 
     const navigate = useNavigate();
 
     useEffect(() => {
         fetchClassrooms();
     }, []);
+
+    // NEW: Polling mechanism to update badges live every 10 seconds
+    useEffect(() => {
+        if (classrooms.length === 0) return;
+
+        const fetchAllUnreadCounts = async () => {
+            const counts = {};
+            for (const cls of classrooms) {
+                try {
+                    const res = await api.get(`/chat/unread-total?targetType=CLASSROOM&targetId=${cls.id}`);
+                    counts[cls.id] = res.data;
+                } catch (e) {
+                    console.error("Failed to fetch unread count for", cls.id);
+                }
+            }
+            setTotalUnreadCounts(counts);
+        };
+
+        // Fetch immediately, then set an interval
+        fetchAllUnreadCounts();
+        const intervalId = setInterval(fetchAllUnreadCounts, 10000); // 10 seconds
+
+        // Cleanup interval when leaving the dashboard
+        return () => clearInterval(intervalId);
+    }, [classrooms]);
 
     const fetchClassrooms = async () => {
         try {
@@ -32,7 +60,7 @@ export default function TeacherDashboard() {
     const handleCopyInviteCode = (classroom) => {
         navigator.clipboard.writeText(classroom.inviteCode).then(() => {
             setCopiedId(classroom.id);
-            setTimeout(() => setCopiedId(null), 2000); // reset after 2s
+            setTimeout(() => setCopiedId(null), 2000); 
         });
     };
 
@@ -74,14 +102,17 @@ export default function TeacherDashboard() {
 
     return (
         <div className="page-container animate-fade-in">
-            <div className="page-header">
+            <div className="page-header flex flex-wrap items-center justify-between gap-4">
                 <div>
                     <h1 className="page-title">Dashboard</h1>
                     <p className="page-subtitle">Manage classrooms, courses, students, and analytics</p>
                 </div>
-                <button type="button" className="btn" onClick={() => setShowCreateModal(true)}>
-                    + Create Classroom
-                </button>
+                <div className="flex gap-2">
+                    
+                    <button type="button" className="btn" onClick={() => setShowCreateModal(true)}>
+                        + Create Classroom
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -111,6 +142,20 @@ export default function TeacherDashboard() {
                                 onClick={() => navigate(`/teacher/classroom/${classroom.id}`)}
                             >
                                 Manage Courses & Students
+                            </button>
+                            
+                            {/* UPDATED: Class Chat Button with Badges */}
+                            <button
+                                type="button"
+                                className="btn w-full relative bg-[var(--primary-muted)] text-[var(--text)] hover:bg-[var(--border)] border border-[var(--border)]"
+                                onClick={() => navigate(`/chat/CLASSROOM/${classroom.id}`)}
+                            >
+                                💬 Open Class Chat
+                                {totalUnreadCounts[classroom.id] > 0 && (
+                                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                                        {totalUnreadCounts[classroom.id] > 99 ? '99+' : totalUnreadCounts[classroom.id]}
+                                    </span>
+                                )}
                             </button>
                         </div>
 
@@ -150,16 +195,8 @@ export default function TeacherDashboard() {
                                 required
                             />
                             <div className="flex justify-end gap-2">
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={() => setShowCreateModal(false)}
-                                >
-                                    Cancel
-                                </button>
-                                <button type="submit" className="btn" style={{ background: 'var(--success)' }}>
-                                    Create
-                                </button>
+                                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                                <button type="submit" className="btn" style={{ background: 'var(--success)' }}>Create</button>
                             </div>
                         </form>
                     </div>
@@ -179,13 +216,7 @@ export default function TeacherDashboard() {
                                 required
                             />
                             <div className="flex justify-end gap-2">
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={() => setEditingClassroom(null)}
-                                >
-                                    Cancel
-                                </button>
+                                <button type="button" className="btn btn-secondary" onClick={() => setEditingClassroom(null)}>Cancel</button>
                                 <button type="submit" className="btn">Save Changes</button>
                             </div>
                         </form>

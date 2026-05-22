@@ -18,6 +18,8 @@ import CoursePlayer from './pages/student/CoursePlayer';
 import CourseLeaderboard from './pages/student/CourseLeaderboard';
 import Profile from './pages/Profile'; // Adjust the import path as needed
 import UserProfile from './pages/UserProfile'; // Import it at the top
+import { ChatProvider } from './context/ChatProvider';
+import ChatPage from './pages/ChatPage'; // Ensure you import it at the top!
 const ProtectedRoute = ({ children, allowedRole }) => {
     const { user, loading } = useContext(AuthContext);
 
@@ -35,6 +37,7 @@ export default function App() {
     return (
         <ThemeProvider>
             <AuthProvider>
+                <ChatProvider>
                 <BrowserRouter>
                     <MainLayout>
                         <Routes>
@@ -110,9 +113,11 @@ export default function App() {
                             <Route path="*" element={<Navigate to="/login" />} />
                             <Route path="/profile" element={<Profile />} />
                             <Route path="/profile/:id" element={<UserProfile />} />
+                            <Route path="/chat/:targetType/:targetId" element={<ChatPage />} />
                         </Routes>
                     </MainLayout>
                 </BrowserRouter>
+                </ChatProvider>
             </AuthProvider>
         </ThemeProvider>
     );
