@@ -26,6 +26,12 @@ export default function ChatWindow({
 
   const activeTabRef = useRef(activeTab);
   const processedMsgIds = useRef(new Set()); 
+  // --- NEW: Auto-scroll to bottom whenever messages load or update ---
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
   
   useEffect(() => {
     activeTabRef.current = activeTab;
@@ -220,7 +226,6 @@ export default function ChatWindow({
                     onClick={() => setActiveTab(p.id)}
                     className={`relative w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center gap-2 ${activeTab === p.id ? "bg-[var(--primary)] text-white shadow-md" : "text-[var(--text)] hover:bg-[var(--border)]"}`}
                   >
-                    <div className={`w-2 h-2 rounded-full ${p.name.includes("(Teacher)") ? "bg-blue-400" : "bg-green-400"}`}></div>
                     <span className="truncate pr-6">{p.name}</span>
                     
                     {unreadCounts[p.id] > 0 && activeTab !== p.id && (

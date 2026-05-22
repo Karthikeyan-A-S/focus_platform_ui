@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 import ClassroomStudents from '../../components/teacher/ClassroomStudents';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { parseQuestionOptions, letterForOptionIndex } from '../../utils/quizOptions';
+import { SearchContext } from '../../context/SearchContext'; // NEW: Imported SearchContext
 
 export default function ClassroomManager() {
     const { classroomId } = useParams();
@@ -18,7 +19,7 @@ export default function ClassroomManager() {
     const [showContentModal, setShowContentModal] = useState(false);
     const [showQuestionModal, setShowQuestionModal] = useState(false);
     const [editingCourse, setEditingCourse] = useState(null);
-    const [editingContent, setEditingContent] = useState(null); // NEW: State for editing content
+    const [editingContent, setEditingContent] = useState(null); 
     const [editingQuestion, setEditingQuestion] = useState(null);
 
     const [courseForm, setCourseForm] = useState({ title: '', description: '' });
@@ -26,6 +27,9 @@ export default function ClassroomManager() {
     const [questionForm, setQuestionForm] = useState({
         questionText: '', optA: '', optB: '', optC: '', optD: '', correctAnswer: 'A',
     });
+
+    // NEW: Bring in the search query from Context
+    const { searchQuery } = useContext(SearchContext);
 
     useEffect(() => {
         fetchCourses();
@@ -91,7 +95,6 @@ export default function ClassroomManager() {
         }
     };
 
-    // NEW: Update Content function
     const handleUpdateContent = async (e) => {
         e.preventDefault();
         try {
@@ -108,7 +111,6 @@ export default function ClassroomManager() {
         }
     };
 
-    // NEW: Delete Content function
     const handleDeleteContent = async (id) => {
         if (window.confirm('Delete this lesson content?')) {
             try {
@@ -215,8 +217,19 @@ export default function ClassroomManager() {
         setEditingQuestion(q);
     };
 
+    // --- NEW: Filter Courses based on Search Query ---
+    const filteredCourses = courses.filter(course => {
+        const query = (searchQuery || "").toLowerCase().trim();
+        if (!query) return true; // Show all if search is empty
+        return (
+            course.title.toLowerCase().includes(query) ||
+            (course.description && course.description.toLowerCase().includes(query))
+        );
+    });
+
     if (loading) return <LoadingSpinner message="Loading classroom..." />;
 
+    // Inside a specific course
     if (selectedCourse) {
         return (
             <div className="page-container animate-fade-in">
@@ -258,7 +271,6 @@ export default function ClassroomManager() {
                             + Add Content
                         </button>
                     </div>
-                    {/* NEW: Updated Content render to show Edit and Delete buttons */}
                     {selectedCourse.contents?.map((content, index) => (
                         <div key={content.id} className="card relative mb-3 bg-[var(--surface)] border-l-4 border-[var(--primary)]">
                             <div className="flex justify-between gap-4">
@@ -305,7 +317,7 @@ export default function ClassroomManager() {
                     {selectedCourse.questions?.map((q, index) => (
                         <div
                             key={q.id}
-                            className="card relative mb-3 border-l-4 border-[var(--success)]"
+                            className="card relative mb-3 border-l-4 border-[var(--success)] bg-[var(--surface)]"
                         >
                             <div className="flex justify-between gap-4">
                                 <p className="mb-2 text-lg font-bold">
@@ -332,13 +344,13 @@ export default function ClassroomManager() {
                                 {parseQuestionOptions(q.options).map((opt, i) => (
                                     <div
                                         key={i}
-                                        className="rounded bg-[var(--surface)] p-2 text-[var(--text-muted)]"
+                                        className="rounded bg-[var(--background)] border border-[var(--border)] p-2 text-[var(--text-muted)]"
                                     >
                                         <strong>{letterForOptionIndex(i)}.</strong> {opt}
                                     </div>
                                 ))}
                             </div>
-                            <p className="inline-block rounded bg-[var(--primary-muted)] px-2 py-1 text-sm font-bold text-[var(--success)]">
+                            <p className="inline-block rounded bg-[var(--success)]/10 px-2 py-1 text-sm font-bold text-[var(--success)] border border-[var(--success)]/20">
                                 Answer: {q.correctAnswer}
                             </p>
                         </div>
@@ -347,14 +359,14 @@ export default function ClassroomManager() {
 
                 {(showQuestionModal || editingQuestion) && (
                     <div className="modal-overlay">
-                        <div className="modal-content max-w-lg">
+                        <div className="modal-content max-w-lg bg-[var(--surface)] text-[var(--text)] border border-[var(--border)]">
                             <h2 className="mb-4 text-xl font-bold">
                                 {editingQuestion ? 'Edit Question' : 'Add New Question'}
                             </h2>
                             <form onSubmit={editingQuestion ? handleUpdateQuestion : handleCreateQuestion}>
                                 <label className="mb-1 block text-sm font-bold">Question Text</label>
                                 <input
-                                    className="input-field mb-4"
+                                    className="input-field mb-4 bg-[var(--background)] text-[var(--text)] border-[var(--border)]"
                                     value={questionForm.questionText}
                                     onChange={(e) =>
                                         setQuestionForm({ ...questionForm, questionText: e.target.value })
@@ -368,7 +380,7 @@ export default function ClassroomManager() {
                                                 Option {String.fromCharCode(65 + i)}
                                             </label>
                                             <input
-                                                className="input-field"
+                                                className="input-field bg-[var(--background)] text-[var(--text)] border-[var(--border)]"
                                                 value={questionForm[key]}
                                                 onChange={(e) =>
                                                     setQuestionForm({ ...questionForm, [key]: e.target.value })
@@ -382,7 +394,7 @@ export default function ClassroomManager() {
                                     Correct Answer (letter)
                                 </label>
                                 <select
-                                    className="input-field mb-6"
+                                    className="input-field mb-6 bg-[var(--background)] text-[var(--text)] border-[var(--border)]"
                                     value={questionForm.correctAnswer}
                                     onChange={(e) => setQuestionForm({ ...questionForm, correctAnswer: e.target.value })}
                                     required
@@ -402,7 +414,7 @@ export default function ClassroomManager() {
                                 <div className="flex justify-end gap-2">
                                     <button
                                         type="button"
-                                        className="btn btn-secondary"
+                                        className="btn btn-secondary border border-[var(--border)] bg-[var(--background)] hover:bg-[var(--border)] text-[var(--text)]"
                                         onClick={() => {
                                             setShowQuestionModal(false);
                                             setEditingQuestion(null);
@@ -418,23 +430,22 @@ export default function ClassroomManager() {
                                     >
                                         Cancel
                                     </button>
-                                    <button type="submit" className="btn">Save Question</button>
+                                    <button type="submit" className="btn bg-[var(--primary)] text-white hover:bg-[var(--primary)]/90">Save Question</button>
                                 </div>
                             </form>
                         </div>
                     </div>
                 )}
 
-                {/* NEW: Updated Content Modal to handle edits */}
                 {(showContentModal || editingContent) && (
                     <div className="modal-overlay">
-                        <div className="modal-content max-w-lg">
+                        <div className="modal-content max-w-lg bg-[var(--surface)] text-[var(--text)] border border-[var(--border)]">
                             <h2 className="mb-4 text-xl font-bold">
                                 {editingContent ? 'Edit Course Content' : 'Add Course Content'}
                             </h2>
                             <form onSubmit={editingContent ? handleUpdateContent : handleCreateContent}>
                                 <textarea
-                                    className="input-field mb-4 h-40"
+                                    className="input-field mb-4 h-40 bg-[var(--background)] text-[var(--text)] border-[var(--border)]"
                                     placeholder="Enter lesson text..."
                                     value={contentForm.bodyText}
                                     onChange={(e) => setContentForm({ ...contentForm, bodyText: e.target.value })}
@@ -443,7 +454,7 @@ export default function ClassroomManager() {
                                 <div className="flex justify-end gap-2">
                                     <button
                                         type="button"
-                                        className="btn btn-secondary"
+                                        className="btn btn-secondary border border-[var(--border)] bg-[var(--background)] hover:bg-[var(--border)] text-[var(--text)]"
                                         onClick={() => {
                                             setShowContentModal(false);
                                             setEditingContent(null);
@@ -452,7 +463,7 @@ export default function ClassroomManager() {
                                     >
                                         Cancel
                                     </button>
-                                    <button type="submit" className="btn">
+                                    <button type="submit" className="btn bg-[var(--primary)] text-white hover:bg-[var(--primary)]/90">
                                         {editingContent ? 'Save Changes' : 'Save Content'}
                                     </button>
                                 </div>
@@ -464,6 +475,7 @@ export default function ClassroomManager() {
         );
     }
 
+    // Main Classroom Dashboard (List of Courses or Students)
     return (
         <div className="page-container animate-fade-in">
             <button
@@ -483,31 +495,40 @@ export default function ClassroomManager() {
                 )}
             </div>
 
-            <div className="tab-bar">
+            <div className="tab-bar border-b border-[var(--border)] mb-6">
                 <button
                     type="button"
-                    className={`tab-btn ${classroomTab === 'courses' ? 'active' : ''}`}
+                    className={`tab-btn px-4 py-2 font-semibold ${classroomTab === 'courses' ? 'active border-b-2 border-[var(--primary)] text-[var(--primary)]' : 'text-[var(--text-muted)]'}`}
                     onClick={() => setClassroomTab('courses')}
                 >
                     Courses
                 </button>
                 <button
                     type="button"
-                    className={`tab-btn ${classroomTab === 'students' ? 'active' : ''}`}
+                    className={`tab-btn px-4 py-2 font-semibold ${classroomTab === 'students' ? 'active border-b-2 border-[var(--primary)] text-[var(--primary)]' : 'text-[var(--text-muted)]'}`}
                     onClick={() => setClassroomTab('students')}
                 >
                     Students
                 </button>
             </div>
 
+            {/* Render Logic: Students tab, empty state, search state, then grid */}
             {classroomTab === 'students' ? (
                 <ClassroomStudents classroomId={classroomId} />
+            ) : courses.length === 0 ? (
+                <div className="card text-center py-12 text-[var(--text-muted)] bg-[var(--surface)] border border-[var(--border)]">
+                    You haven't created any courses yet. Click "+ Create Course" to start!
+                </div>
+            ) : filteredCourses.length === 0 ? (
+                <div className="card text-center py-12 text-[var(--text-muted)] bg-[var(--surface)] border border-[var(--border)]">
+                    No courses match your search for "{searchQuery}".
+                </div>
             ) : (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {courses.map((course) => (
+                    {filteredCourses.map((course) => (
                         <div
                             key={course.id}
-                            className="card flex cursor-pointer flex-col justify-between"
+                            className="card flex cursor-pointer flex-col justify-between bg-[var(--surface)] border border-[var(--border)] transition-all hover:shadow-md"
                             onClick={() => handleSelectCourse(course)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSelectCourse(course)}
                             role="button"
@@ -518,10 +539,10 @@ export default function ClassroomManager() {
                                 <p className="line-clamp-3 text-sm text-[var(--text-muted)]">{course.description}</p>
                             </div>
 
-                            <div className="course-actions" onClick={(e) => e.stopPropagation()}>
+                            <div className="course-actions mt-4 flex gap-2" onClick={(e) => e.stopPropagation()}>
                                 <button
                                     type="button"
-                                    className="btn btn-sm flex-1"
+                                    className="btn btn-sm flex-1 bg-[var(--primary)] text-white hover:bg-[var(--primary)]/90"
                                     onClick={() => handleSelectCourse(course)}
                                 >
                                     Manage
@@ -541,12 +562,12 @@ export default function ClassroomManager() {
                             </div>
 
                             <div
-                                className="mt-2 flex justify-between border-t border-[var(--border)] pt-3"
+                                className="mt-4 flex justify-between border-t border-[var(--border)] pt-3"
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <button
                                     type="button"
-                                    className="text-sm font-bold text-[var(--primary)]"
+                                    className="text-sm font-bold text-[var(--primary)] hover:underline"
                                     onClick={() => {
                                         setEditingCourse(course);
                                         setCourseForm({
@@ -559,7 +580,7 @@ export default function ClassroomManager() {
                                 </button>
                                 <button
                                     type="button"
-                                    className="text-sm font-bold text-[var(--danger)]"
+                                    className="text-sm font-bold text-[var(--danger)] hover:underline"
                                     onClick={(e) => handleDeleteCourse(course.id, e)}
                                 >
                                     Delete
@@ -572,21 +593,21 @@ export default function ClassroomManager() {
 
             {(showCourseModal || editingCourse) && (
                 <div className="modal-overlay">
-                    <div className="modal-content max-w-md">
+                    <div className="modal-content max-w-md bg-[var(--surface)] text-[var(--text)] border border-[var(--border)]">
                         <h2 className="mb-4 text-xl font-bold">
                             {editingCourse ? 'Edit Course' : 'Create a New Course'}
                         </h2>
                         <form onSubmit={editingCourse ? handleUpdateCourse : handleCreateCourse}>
                             <label className="mb-1 block text-sm font-bold">Course Title</label>
                             <input
-                                className="input-field mb-4"
+                                className="input-field mb-4 bg-[var(--background)] text-[var(--text)] border-[var(--border)]"
                                 value={courseForm.title}
                                 onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
                                 required
                             />
                             <label className="mb-1 block text-sm font-bold">Description</label>
                             <textarea
-                                className="input-field mb-6 h-24"
+                                className="input-field mb-6 h-24 bg-[var(--background)] text-[var(--text)] border-[var(--border)]"
                                 value={courseForm.description}
                                 onChange={(e) =>
                                     setCourseForm({ ...courseForm, description: e.target.value })
@@ -596,7 +617,7 @@ export default function ClassroomManager() {
                             <div className="flex justify-end gap-2">
                                 <button
                                     type="button"
-                                    className="btn btn-secondary"
+                                    className="btn btn-secondary border border-[var(--border)] bg-[var(--background)] hover:bg-[var(--border)] text-[var(--text)]"
                                     onClick={() => {
                                         setShowCourseModal(false);
                                         setEditingCourse(null);
@@ -605,7 +626,7 @@ export default function ClassroomManager() {
                                 >
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn">
+                                <button type="submit" className="btn bg-[var(--primary)] text-white hover:bg-[var(--primary)]/90">
                                     {editingCourse ? 'Save Changes' : 'Create Course'}
                                 </button>
                             </div>
@@ -615,4 +636,4 @@ export default function ClassroomManager() {
             )}
         </div>
     );
-}   
+}

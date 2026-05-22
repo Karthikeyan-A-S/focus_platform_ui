@@ -64,14 +64,6 @@ export default function Profile() {
                         </p>
                     </div>
 
-                    <div>
-                        <label className="text-xs uppercase tracking-wider text-[var(--text-muted)]">
-                            Account Status
-                        </label>
-                        <p className="mt-1 text-lg font-semibold text-[var(--success)]">
-                            Active
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>

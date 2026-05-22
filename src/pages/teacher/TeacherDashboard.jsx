@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { SearchContext } from '../../context/SearchContext'; // NEW: Imported SearchContext
 
 export default function TeacherDashboard() {
     const [classrooms, setClassrooms] = useState([]);
@@ -12,16 +13,18 @@ export default function TeacherDashboard() {
     const [editClassroomName, setEditClassroomName] = useState('');
     const [copiedId, setCopiedId] = useState(null); 
     
-    // NEW: State for tracking unread messages
     const [totalUnreadCounts, setTotalUnreadCounts] = useState({});
 
     const navigate = useNavigate();
+    
+    // NEW: Bring in the search query from Context
+    const { searchQuery } = useContext(SearchContext);
 
     useEffect(() => {
         fetchClassrooms();
     }, []);
 
-    // NEW: Polling mechanism to update badges live every 10 seconds
+    // Polling mechanism to update badges live every 10 seconds
     useEffect(() => {
         if (classrooms.length === 0) return;
 
@@ -38,11 +41,9 @@ export default function TeacherDashboard() {
             setTotalUnreadCounts(counts);
         };
 
-        // Fetch immediately, then set an interval
         fetchAllUnreadCounts();
-        const intervalId = setInterval(fetchAllUnreadCounts, 10000); // 10 seconds
+        const intervalId = setInterval(fetchAllUnreadCounts, 10000);
 
-        // Cleanup interval when leaving the dashboard
         return () => clearInterval(intervalId);
     }, [classrooms]);
 
@@ -98,6 +99,13 @@ export default function TeacherDashboard() {
         }
     };
 
+    // --- NEW: Filter Classrooms based on Search Query ---
+    const filteredClassrooms = classrooms.filter(classroom => {
+        const query = (searchQuery || "").toLowerCase().trim();
+        if (!query) return true; // Show all if search is empty
+        return classroom.name.toLowerCase().includes(query);
+    });
+
     if (loading) return <LoadingSpinner message="Loading your dashboard..." />;
 
     return (
@@ -108,95 +116,104 @@ export default function TeacherDashboard() {
                     <p className="page-subtitle">Manage classrooms, courses, students, and analytics</p>
                 </div>
                 <div className="flex gap-2">
-                    
                     <button type="button" className="btn" onClick={() => setShowCreateModal(true)}>
                         + Create Classroom
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {classrooms.map((classroom) => (
-                    <div key={classroom.id} className="card">
-                        <h2 className="mb-2 text-xl font-bold">{classroom.name}</h2>
-                        <p className="mb-4 text-[var(--text-muted)]">
-                            Invite:{' '}
-                            <span
-                                className="cursor-pointer font-mono font-bold text-[var(--primary)] hover:underline"
-                                title="Click to copy"
-                                onClick={() => handleCopyInviteCode(classroom)}
-                            >
-                                {classroom.inviteCode}
-                            </span>
-                            {copiedId === classroom.id && (
-                                <span className="ml-2 text-xs font-semibold text-[var(--success)]">
-                                    Copied!
+            {/* Check empty state, then check search state, then map results */}
+            {classrooms.length === 0 ? (
+                <div className="card text-center py-12 text-[var(--text-muted)] border border-[var(--border)] bg-[var(--surface)]">
+                    You haven&apos;t created any classrooms yet. Click "+ Create Classroom" to start!
+                </div>
+            ) : filteredClassrooms.length === 0 ? (
+                 <div className="card text-center py-12 text-[var(--text-muted)] border border-[var(--border)] bg-[var(--surface)]">
+                    No classrooms match your search for "{searchQuery}".
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {filteredClassrooms.map((classroom) => (
+                        <div key={classroom.id} className="card bg-[var(--surface)] border border-[var(--border)] transition-all hover:shadow-md">
+                            <h2 className="mb-2 text-xl font-bold text-[var(--text)]">{classroom.name}</h2>
+                            <p className="mb-4 text-[var(--text-muted)]">
+                                Invite:{' '}
+                                <span
+                                    className="cursor-pointer font-mono font-bold text-[var(--primary)] hover:underline bg-[var(--background)] px-2 py-1 rounded"
+                                    title="Click to copy"
+                                    onClick={() => handleCopyInviteCode(classroom)}
+                                >
+                                    {classroom.inviteCode}
                                 </span>
-                            )}
-                        </p>
-
-                        <div className="flex flex-col gap-2">
-                            <button
-                                type="button"
-                                className="btn w-full"
-                                onClick={() => navigate(`/teacher/classroom/${classroom.id}`)}
-                            >
-                                Manage Courses & Students
-                            </button>
-                            
-                            {/* UPDATED: Class Chat Button with Badges */}
-                            <button
-                                type="button"
-                                className="btn w-full relative bg-[var(--primary-muted)] text-[var(--text)] hover:bg-[var(--border)] border border-[var(--border)]"
-                                onClick={() => navigate(`/chat/CLASSROOM/${classroom.id}`)}
-                            >
-                                💬 Open Class Chat
-                                {totalUnreadCounts[classroom.id] > 0 && (
-                                    <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
-                                        {totalUnreadCounts[classroom.id] > 99 ? '99+' : totalUnreadCounts[classroom.id]}
+                                {copiedId === classroom.id && (
+                                    <span className="ml-2 text-xs font-semibold text-[var(--success)]">
+                                        Copied!
                                     </span>
                                 )}
-                            </button>
-                        </div>
+                            </p>
 
-                        <div className="mt-4 flex justify-between border-t border-[var(--border)] pt-3">
-                            <button
-                                type="button"
-                                className="text-sm font-bold text-[var(--text-muted)] hover:text-[var(--primary)]"
-                                onClick={() => {
-                                    setEditingClassroom(classroom);
-                                    setEditClassroomName(classroom.name);
-                                }}
-                            >
-                                Edit Name
-                            </button>
-                            <button
-                                type="button"
-                                className="text-sm font-bold text-[var(--danger)]"
-                                onClick={() => handleDeleteClassroom(classroom.id)}
-                            >
-                                Delete
-                            </button>
+                            <div className="flex flex-col gap-2">
+                                <button
+                                    type="button"
+                                    className="btn w-full bg-[var(--primary)] text-white hover:bg-[var(--primary)]/90"
+                                    onClick={() => navigate(`/teacher/classroom/${classroom.id}`)}
+                                >
+                                    Manage Courses & Students
+                                </button>
+                                
+                                <button
+                                    type="button"
+                                    className="btn w-full relative bg-[var(--background)] text-[var(--text)] hover:bg-[var(--border)] border border-[var(--border)]"
+                                    onClick={() => navigate(`/chat/CLASSROOM/${classroom.id}`)}
+                                >
+                                    💬 Open Class Chat
+                                    {totalUnreadCounts[classroom.id] > 0 && (
+                                        <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                                            {totalUnreadCounts[classroom.id] > 99 ? '99+' : totalUnreadCounts[classroom.id]}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
+
+                            <div className="mt-4 flex justify-between border-t border-[var(--border)] pt-3">
+                                <button
+                                    type="button"
+                                    className="text-sm font-bold text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+                                    onClick={() => {
+                                        setEditingClassroom(classroom);
+                                        setEditClassroomName(classroom.name);
+                                    }}
+                                >
+                                    Edit Name
+                                </button>
+                                <button
+                                    type="button"
+                                    className="text-sm font-bold text-red-500 hover:text-red-600 transition-colors"
+                                    onClick={() => handleDeleteClassroom(classroom.id)}
+                                >
+                                    Delete
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            )}
 
             {showCreateModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content">
+                    <div className="modal-content bg-[var(--surface)] text-[var(--text)] border border-[var(--border)]">
                         <h2 className="mb-4 text-xl font-bold">Create New Classroom</h2>
                         <form onSubmit={handleCreateClassroom}>
                             <input
-                                className="input-field mb-4"
+                                className="input-field mb-4 bg-[var(--background)] text-[var(--text)] border-[var(--border)]"
                                 placeholder="Classroom Name"
                                 value={newClassroomName}
                                 onChange={(e) => setNewClassroomName(e.target.value)}
                                 required
                             />
                             <div className="flex justify-end gap-2">
-                                <button type="button" className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                                <button type="submit" className="btn" style={{ background: 'var(--success)' }}>Create</button>
+                                <button type="button" className="btn btn-secondary border border-[var(--border)] bg-[var(--background)] hover:bg-[var(--border)] text-[var(--text)]" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                                <button type="submit" className="btn" style={{ background: 'var(--success)', color: '#fff' }}>Create</button>
                             </div>
                         </form>
                     </div>
@@ -205,19 +222,19 @@ export default function TeacherDashboard() {
 
             {editingClassroom && (
                 <div className="modal-overlay">
-                    <div className="modal-content">
+                    <div className="modal-content bg-[var(--surface)] text-[var(--text)] border border-[var(--border)]">
                         <h2 className="mb-4 text-xl font-bold">Edit Classroom</h2>
                         <form onSubmit={handleUpdateClassroom}>
                             <input
-                                className="input-field mb-4"
+                                className="input-field mb-4 bg-[var(--background)] text-[var(--text)] border-[var(--border)]"
                                 placeholder="Classroom Name"
                                 value={editClassroomName}
                                 onChange={(e) => setEditClassroomName(e.target.value)}
                                 required
                             />
                             <div className="flex justify-end gap-2">
-                                <button type="button" className="btn btn-secondary" onClick={() => setEditingClassroom(null)}>Cancel</button>
-                                <button type="submit" className="btn">Save Changes</button>
+                                <button type="button" className="btn btn-secondary border border-[var(--border)] bg-[var(--background)] hover:bg-[var(--border)] text-[var(--text)]" onClick={() => setEditingClassroom(null)}>Cancel</button>
+                                <button type="submit" className="btn bg-[var(--primary)] text-white hover:bg-[var(--primary)]/90">Save Changes</button>
                             </div>
                         </form>
                     </div>
